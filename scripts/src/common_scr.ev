@@ -1,0 +1,157 @@
+import std;
+
+common function ev_heal_p01() {
+    const int SP_PM_VERSION = 49;
+    const int TRCARD_RANK_GOLD = 4;
+    const int TIME_ZONE_MORNING = 0; // Consider an enum definition for TIME_ZONE?
+    const int TIME_ZONE_NOON = 1;
+    const int YES = 0;
+    int goldPCYes = 0;
+    int winChoice; // Probably best to use the SCWK_ANSWER as storage here to be identical but that's fine.
+    flag FE_PC_GOLD: 68; // Defines Flag using the index of 68 as storage. Ideal as defined by the compiler or as part of "std"
+    talk { // std::talk_obj_start()
+        std::temotiBallLoad();
+        // Need to allow for you to specify an argument to use as a return value for a command
+        if (std::getPmVersion() == SP_PM_VERSION) {
+            // Need macro support. How to implement something like that into the compiler?
+            // Maybe the better way to do this is use Storage specifier for a String?
+            // That way it's more consistent with how Flags specify their memory storage. And no need to macros specifically.
+            // TALKMSG('dp_scenario3', '00_msg_wrong_game_00', 'Install instructions exist for a reason.\nPlease visit https://luminescent.team/');
+            std::setTeleportID(0, 0);
+            std::teleport(); // Can this happen before talk is over...
+            // _LAST_KEYWAIT
+            // _TALK_CLOSE
+            // _TALK_OBJ_END
+            return; // Should generate a _TALK_OBJ_END before _END because inside of a talk block
+        }
+        if (std::getTrcardRank() >= TRCARD_RANK_GOLD) {
+            if (FE_PC_GOLD)
+            {
+                std::playerName(0);
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_07');
+                // Duplicate blocks.
+                winChoice = std::win_choice();
+                if (winChoice == YES) { // _YES_NO_WIN
+                    goldPCYes = 1;
+                } else { // NO
+                    std::talkMsg('dp_scenario3%91-msg_common_pc_heal_10');
+                    // _CHG_LOCAL_SCR // Is this expected for all COMMON_SCR calls?
+                    // Looks like Den missed it.
+                    return;
+                }
+            } else {
+                FE_PC_GOLD = true;
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_05');
+                std::playerName(0);
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_06_1');
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_06_2');
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_06_3');
+                winChoice = std::win_choice();
+                if (winChoice == YES) { // _YES_NO_WIN
+                    goldPCYes = 1;
+                } else { // NO
+                    std::talkMsg('dp_scenario3%91-msg_common_pc_heal_10');
+                    // _CHG_LOCAL_SCR
+                    return;
+                }
+            }
+        } else {
+            goldPCYes = 0;
+            switch (std::get_time_zone()) {
+                case TIME_ZONE_MORNING:
+                    std::talkMsg('dp_scenario3%91-msg_common_pc_heal_11');
+                    break;
+                case TIME_ZONE_NOON:
+                    std::talkMsg('dp_scenario3%91-msg_common_pc_heal_12');
+                    break;
+                default:
+                    std::talkMsg('dp_scenario3%91-msg_common_pc_heal_01');
+                    break;
+            }
+            winChoice = std::win_choice();
+        }
+        if (winChoice == YES) {
+            lock player_banzai_anm00('HERO') {
+                // std::ac::lock('HERO')
+                // std::obj::anime('HERO', 'player_banzai_anm00')
+                std::obj::anime_wait();
+                // std::ac::release('HERO')
+            }
+            player_idle_return('HERO');  // std::obj::anime('HERO', 'player_idle_return')
+            if (std::get_trcard_rank() >= TRCARD_RANK_GOLD)
+            {
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_08');
+            } else {
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_02');
+            }
+            std::me::play('M_FI002');
+            common_pc_kaihuku_common();
+            unless (FE_PC_POKERUS) { // Might be better to use the unless keyword to better match the flagoff check
+                if (std::chk_temoti_pokerus() == 1)
+                {
+                    FE_PC_POKERUS = true;
+                    lock player_banzai_anm00('HERO') {
+                        // std::ac::lock('HERO')
+                        // std::obj::anime('HERO', 'player_banzai_anm00')
+                        std::obj::anime_wait();
+                        // std::ac::release('HERO')
+                    }
+                    player_idle_return('HERO');  // std::obj::anime('HERO', 'player_idle_return')
+                    std::talkMsg('dp_scenario3%91-msg_common_heal_pokerus_01_1');
+                    std::talkMsg('dp_scenario3%91-msg_common_heal_pokerus_01_2', 1);
+                    return;
+                }
+            }
+
+            // ev_pc_kaihuku_after
+            if (goldPCYes == 1)
+            {
+                // gold_pc_haihuku_02
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_09');
+                lock player_banzai_anm00('HERO') {
+                    // std::ac::lock('HERO')
+                    // std::obj::anime('HERO', 'player_banzai_anm00')
+                    std::obj::animeWait();
+                    // std::ac::release('HERO')
+                }
+                player_idle_return('HERO');  // std::obj::anime('HERO', 'player_idle_return')
+                now_zone_to_pcwoman_code_bow_anime01();
+                std::talkMsg('dp_scenario3%91-msg_common_pc_heal_10');
+                return;
+            }
+            std::talkMsg('dp_scenario3%91-msg_common_pc_heal_03');
+            lock player_banzai_anm00('HERO') {
+                // std::ac::lock('HERO')
+                // std::obj::anime('HERO', 'player_banzai_anm00')
+                std::obj::animeWait();
+                // std::ac::release('HERO')
+            }
+            player_idle_return('HERO');  // std::obj::anime('HERO', 'player_idle_return')
+            now_zone_to_pcwoman_code_bow_anime01();
+            std::talkMsg('dp_scenario3%91-msg_common_pc_heal_04');
+        } else {
+            std::talkMsg('dp_scenario3%91-msg_common_pc_heal_04');
+            return;
+        }
+    }
+    // ev_pc_kaihuku_after continued
+    anm_dj_turn_hero_around('HERO');
+    std::obj::animeWait();
+    if (SYS_INPUT_OFF)
+    {
+        ev_block_doc_end();
+    }
+    ev_healthcheck();
+    return;
+}
+
+animation player_banzai_anm00 {
+    std::ac::index_anime(9);
+    std::ac::wait(35);
+    // std::ac::end() added at the end by default.
+}
+
+animation player_idle_return {
+    std::ac::index_anime(0);
+    std::ac::wait(10);
+}
