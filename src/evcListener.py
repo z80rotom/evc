@@ -161,12 +161,12 @@ class evcListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by evcParser#retFuncArg.
-    def enterRetFuncArg(self, ctx:evcParser.RetFuncArgContext):
+    # Enter a parse tree produced by evcParser#funcArgStorage.
+    def enterFuncArgStorage(self, ctx:evcParser.FuncArgStorageContext):
         pass
 
-    # Exit a parse tree produced by evcParser#retFuncArg.
-    def exitRetFuncArg(self, ctx:evcParser.RetFuncArgContext):
+    # Exit a parse tree produced by evcParser#funcArgStorage.
+    def exitFuncArgStorage(self, ctx:evcParser.FuncArgStorageContext):
         pass
 
 
@@ -392,6 +392,24 @@ class evcListener(ParseTreeListener):
 
     # Exit a parse tree produced by evcParser#boolValue.
     def exitBoolValue(self, ctx:evcParser.BoolValueContext):
+        pass
+
+
+    # Enter a parse tree produced by evcParser#assignmentOperator.
+    def enterAssignmentOperator(self, ctx:evcParser.AssignmentOperatorContext):
+        pass
+
+    # Exit a parse tree produced by evcParser#assignmentOperator.
+    def exitAssignmentOperator(self, ctx:evcParser.AssignmentOperatorContext):
+        pass
+
+
+    # Enter a parse tree produced by evcParser#type.
+    def enterType(self, ctx:evcParser.TypeContext):
+        pass
+
+    # Exit a parse tree produced by evcParser#type.
+    def exitType(self, ctx:evcParser.TypeContext):
         pass
 
 

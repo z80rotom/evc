@@ -49,7 +49,7 @@ enumEntry
 
 // Command
 command
-    :   COMMAND Identifier '(' funcArgList ')' ('->' retFuncArg)? ':' number ';'
+    :   COMMAND Identifier '(' funcArgList ')' ('->' type)? ':' number ';'
     ;
 // End command
 
@@ -72,7 +72,7 @@ animationLock
 
 // Functions
 function
-    : functionSpecifier? FUNCTION Identifier '(' funcArgList ')' ('->' retFuncArg)? '{' block '}'
+    : functionSpecifier? FUNCTION Identifier '(' funcArgList ')' ('->' type)? '{' block '}'
     ;
 
 functionSpecifier
@@ -85,12 +85,14 @@ funcArgList
     | funcArg (',' funcArg)+
     ;
 
+// Used by commands too which is the only place I would recommend to have to use the return storage specifier.
 funcArg
-    : Type Identifier (':' number)?
+    : type Identifier (':' funcArgStorage)?
     ;
 
-retFuncArg
-    : Type
+funcArgStorage
+    : number
+    | RETURN
     ;
 
 functionCall
@@ -161,11 +163,11 @@ whileBlock
     ;
 
 variableDefinition
-    :   CONST? Type Identifier (':' number)? ('=' variableRightHandAssignment)?
+    :   CONST? type Identifier (':' number)? ('=' variableRightHandAssignment)?
     ;
 
 variableAssignment
-    :   Identifier '=' variableRightHandAssignment
+    :   Identifier assignmentOperator variableRightHandAssignment
     ;
 
 variableRightHandAssignment
@@ -234,14 +236,23 @@ Comparator
     | GE
     ;
 
-Type
+// Must be lowercase or suddenly it stops being able to understand assignment at all
+// God damn I need to get better at antlr4
+assignmentOperator
+    : '='
+    | '+='
+    | '-='
+    ;
+
+// Adding ScopedIdentifier as a potential type breaks the unless lowercase
+type
     : FLAG
     | SYSFLAG
     | INT
     | FLOAT
     | BOOL
     | STR
-    | ScopedIdentifier // Enums
+    | ScopedIdentifier
     ;
 
 Comment

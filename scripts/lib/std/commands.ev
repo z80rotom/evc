@@ -3,28 +3,38 @@ from boolean import *;
 command _DUMMY(): 2;
 command _END(): 3;
 command _TIME_WAIT(): 4;
-command _CMPWK(): 19;
-command _JUMP(): 24;
-command _CALL(): 28;
-command _RET(): 29;
-command _IF_JUMP(): 30;
+// Used to create a loop for poison check
+// Compares two work values and sets it from _IF_JUMP
+command _CMPWK(int lhs, int rhs): 19;
+// Jumps to label and continues executing instructions there
+command jump(str label): 24;
+// Jumps to label and continues executing instructions there
+// Creates a pointer to next instruction to go back to with return
+command call(str label): 28;
+command _return(): 29;
+// Used in conjunction with CMPWK to create a loop for poison check
+command _IF_JUMP(str comparator, str label): 30;
+// Unused
 command _IF_CALL(): 31;
 command _IFVAL_JUMP(): 32;
 command _IFVAL_CALL(): 33;
 command _SWITCH(): 36;
 command _CASE_JUMP(): 37;
 command _CASE_CANCEL(): 38;
-command _FLAG_SET(): 41;
+command setFlag(flag inFlag): 41;
 command _ARRIVE_FLAG_SET(): 42;
 command _FLAG_RESET(): 43;
 command _FLAG_CHECK(): 44;
+// Can work with both flags and sysflags unlike some other commands
 command _IF_FLAGON_JUMP(bool argFlag, str label): 45;
 command _IF_FLAGOFF_JUMP(bool argFlag, str label): 46;
-command _IF_FLAGON_CALL(): 47;
-command _IF_FLAGOFF_CALL(): 48;
+command _IF_FLAGON_CALL(bool argFlag, str label): 47;
+command _IF_FLAGOFF_CALL(bool argFlag, str label): 48;
 command _FLAG_CHECK_WK(): 49;
+// Unused
 command _FLAG_SET_WK(): 50;
-command _TRAINER_FLAG_SET(): 51;
+// Version of this command that takes an int work value instead of a string...
+command setTrainerFlag(str trainer): 51;
 command _TRAINER_FLAG_RESET(): 52;
 command _TRAINER_FLAG_CHECK(): 53;
 command _IF_TR_FLAGON_JUMP(): 54;
@@ -89,10 +99,14 @@ command _ADD_GOLD(): 175;
 command _SUB_GOLD(): 176;
 command _COMP_GOLD(): 177;
 command _FLD_ITEM_EVENT(): 187;
-command _ADD_ITEM(): 189;
+command addItem(int itemNo, int count, int answer: return) -> int: 189;
 command _SUB_ITEM(): 190;
-command _ADD_ITEM_CHK(): 191;
-command _ITEM_CHK(): 192;
+// Use the last argument as a return value instead because they hate me
+// Really returns the Boolean enum
+command _ADD_ITEM_CHK(int itemNo, int count) -> int: 191;
+// Use the last argument as a return value instead because they hate me
+// Really returns the Boolean enum
+command _ITEM_CHK(int itemNo, int count) -> int: 192;
 command _WAZA_ITEM_CHK(): 193;
 command _GET_POCKET_NO(): 194;
 command _CHECK_POCKET(): 195;
@@ -150,7 +164,7 @@ command player_name(int tag): 306;
 command rival_name(int tag): 307;
 command support_name(int tag): 308;
 command pokemon_name(int tag, int monsNo): 309;
-command item_name(int tag, int itemNo): 310;
+command itemName(int tag, int itemNo, int count): 310;
 command bag_pocket_name(int tag, int pocketNo): 311;
 command tm_move_name(int tag, int tmNo): 312;
 command move_name(int tag, int moveNo): 313;
@@ -203,9 +217,12 @@ command _SYS_FLAG_ZUKAN_GET(): 444;
 command _SYS_FLAG_ZUKAN_SET(): 445;
 command _SYS_FLAG_SHOES_GET(): 446;
 command _SYS_FLAG_SHOES_SET(): 447;
-command _SYS_FLAG_BADGE_GET(): 448;
-command _SYS_FLAG_BADGE_SET(): 449;
-command _SYS_FLAG_BADGE_COUNT(): 450;
+// Another that returns from last argument
+// Does sysflag specifically, but shouldn't be used by modders
+// unless you really need to convert a SysFlag into a work value
+command _SYS_FLAG_BADGE_GET(sysflag badgeSysflag) -> int: 448;
+command _SYS_FLAG_BADGE_SET(sysflag badgeSysflag): 449;
+command _SYS_FLAG_BADGE_COUNT() -> int: 450;
 command _SYS_FLAG_BAG_GET(): 451;
 command _SYS_FLAG_BAG_SET(): 452;
 command _SYS_FLAG_PAIR_GET(): 453;
@@ -344,7 +361,9 @@ command _TEMOTI_POKE_CONTEST_STATUS_GET(): 724;
 command _IS_HAIHU_EVENT_ENABLE(): 731;
 command _GET_RANDOM_HIT(): 734;
 command _HIDENEFF_START(): 736;
-command _AUSU_ITEM_CHECK(): 747;
+// If (itemNo - 0x12a) < 0x10
+// if (itemNo >= 0x12a && itemNo < 0x13a)
+command isItemArceusPlate(int itemNo, int answer: return) -> int: 747;
 command _SEAL_NAME(): 759;
 command _DAME_TAMAGO_CHK_ALL(): 762;
 command getTrcardRank() -> int: 765;
@@ -416,8 +435,8 @@ command _TV_START(): 864;
 command _TV_END(): 865;
 command _TV_START_NUMBER(): 866;
 command _DEBUG_RESET_WORK(): 872;
-command _SET_SYS_FLAG(): 873;
-command _RESET_SYS_FLAG(): 874;
+command setSysFlag(sysflag inSysflag): 873;
+command resetSysFlag(sysflag inSysflag): 874;
 command _CAMERA_SET_COS_ANGLE(): 875;
 command _HERO_MOVE_GRID_CENTER_FRONT(): 877;
 command _WARP_ENABLE_SET(): 878;

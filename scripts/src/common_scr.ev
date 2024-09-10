@@ -9,7 +9,9 @@ common function ev_heal_p01() {
     int goldPCYes = 0;
     int winChoice; // Probably best to use the SCWK_ANSWER as storage here to be identical but that's fine.
     flag FE_PC_GOLD: 68; // Defines Flag using the index of 68 as storage. Ideal as defined by the compiler or as part of "std"
+    // There is also a talk_start...
     talk { // std::talk_obj_start()
+        // std::temotiBallLoad();
         std::temotiBallLoad();
         // Need to allow for you to specify an argument to use as a return value for a command
         if (std::getPmVersion() == SP_PM_VERSION) {
@@ -57,17 +59,22 @@ common function ev_heal_p01() {
             }
         } else {
             goldPCYes = 0;
+            // switchBlock00
             switch (std::get_time_zone()) {
                 case TIME_ZONE_MORNING:
+                    // switchBlock01
                     std::talkMsg('dp_scenario3%91-msg_common_pc_heal_11');
                     break;
                 case TIME_ZONE_NOON:
+                    // switchBlock02
                     std::talkMsg('dp_scenario3%91-msg_common_pc_heal_12');
                     break;
                 default:
+                    // switchBlock00 after _CASE commands
                     std::talkMsg('dp_scenario3%91-msg_common_pc_heal_01');
                     break;
             }
+            // switchBlock00After
             winChoice = std::win_choice();
         }
         if (winChoice == YES) {
@@ -154,4 +161,120 @@ animation player_banzai_anm00 {
 animation player_idle_return {
     std::ac::index_anime(0);
     std::ac::wait(10);
+}
+
+function pocket_me_set(int itemNo) {
+    switch (std::getPocketNo(itemNo))
+    {
+        // Might need to revise lexer to handle a switch case like this
+        case 0:
+            // case1_pocket_me
+            std::me::play('M_FI013');
+            break;
+        case 1:
+            // case1_pocket_me
+            std::me::play('M_FI013');
+            break;
+        case 2:
+            // case1_pocket_me
+            std::me::play('M_FI013');
+            break;
+        case 3:
+            // case1_pocket_me
+            std::me::play('M_FI013');
+            break;
+        case 4:
+            // case1_pocket_me
+            std::me::play('M_FI013');
+            break;
+        case 5:
+            // case2_pocket_me
+            std::me::play('M_FI008');
+            break;
+        case 6:
+            // case4_pocket_me
+            std::me::play('M_FI013');
+            break;
+        case 8:
+            // case3_pocket_me
+            std::me::play('M_FI012');
+            break;
+    }
+    return;
+}
+
+// Already expects itemNo as TEMP0
+common function ev_pocket_me_set(int itemNo) {
+    pocket_me_set(itemNo);
+    return;
+}
+
+// Already expects itemNo as TEMP0
+// Already expects count as TEMP1
+common function ev_item_event(int itemNo, int count) {
+    int pocketNo = std::getPocketNo(itemNo);
+    std::addItem(itemNo, count);
+    if (pocketNo == 8)
+    {
+        // event_item_get_taisetsu
+        std::playerName(0);
+        std::itemName(1, itemNo, 1);
+        pocket_me_set(itemNo);
+        std::talkMsg('dp_scenario3%91-msg_event_item_get_04');
+        std::me::wait();
+        // inlined: event_item_get_common_21();
+        std::pocketName(2, pocketNo);
+        std::talkMsg('dp_scenario3%91-msg_event_item_get_07');
+    } else {
+        // event_item_get_sonota
+        std::itemName(0, itemNo, count);
+        pocket_me_set(itemNo);
+        std::talkMsg('dp_scenario3%91-msg_event_item_get_01');
+        // I assume this is extraneous
+        // std::me::wait();
+        // event_item_get_common_20
+        std::me::wait();
+        if (isItemArceusPlate(itemNo) == 1)
+        {
+            // ev_plate_msg_sub
+            WK_SCENE_PLATE_MSG += 1;
+            switch (WK_SCENE_PLATE_MSG) {
+                case 1:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_01');
+                    break;
+                case 2:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_02');
+                    break;
+                case 3:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_03');
+                    break;
+                case 4:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_04');
+                    break;
+                case 5:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_05');
+                    break;
+                case 6:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_06');
+                    break;
+                case 7:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_07');
+                    break;
+                case 8:
+	                std::talkMsg('dp_scenario3%91-msg_plate_get_08');
+                    break;
+                default: // GE 9
+                    // ev_plate_msg_wk_reset
+                    WK_SCENE_PLATE_MSG = 1;
+                    break;
+            }
+        }
+        // All branches of switch statement collapse into this
+        std::playerName(0);
+        std::itemName(1, itemNo, count);
+        std::pocketName(2, pocketNo);
+        std::talkMsg('dp_scenario3%93-msg_fld_item_get_10');
+    }
+
+    return;
 }
