@@ -1,0 +1,3 @@
+enum ZoneID {
+    C01 = 0;
+}
