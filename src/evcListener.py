@@ -44,6 +44,15 @@ class evcListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by evcParser#fromImportRhs.
+    def enterFromImportRhs(self, ctx:evcParser.FromImportRhsContext):
+        pass
+
+    # Exit a parse tree produced by evcParser#fromImportRhs.
+    def exitFromImportRhs(self, ctx:evcParser.FromImportRhsContext):
+        pass
+
+
     # Enter a parse tree produced by evcParser#namespace.
     def enterNamespace(self, ctx:evcParser.NamespaceContext):
         pass

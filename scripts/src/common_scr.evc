@@ -6,9 +6,9 @@ common function ev_heal_p01() {
     const int TIME_ZONE_MORNING = 0; // Consider an enum definition for TIME_ZONE?
     const int TIME_ZONE_NOON = 1;
     const int YES = 0;
-    int goldPCYes = 0;
+    // Force mut's? or force storage?
+    int goldPCYes = 0; // allocates
     int winChoice; // Probably best to use the SCWK_ANSWER as storage here to be identical but that's fine.
-    flag FE_PC_GOLD: 68; // Defines Flag using the index of 68 as storage. Ideal as defined by the compiler or as part of "std"
     // There is also a talk_start...
     talk { // std::talk_obj_start()
         // std::temotiBallLoad();
@@ -211,6 +211,8 @@ common function ev_pocket_me_set(int itemNo) {
 
 // Already expects itemNo as TEMP0
 // Already expects count as TEMP1
+// Might make default allocator for non-common functions use
+// SCWK_PARAM0...3
 common function ev_item_event(int itemNo, int count) {
     int pocketNo = std::getPocketNo(itemNo);
     std::addItem(itemNo, count);

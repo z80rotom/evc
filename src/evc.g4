@@ -12,7 +12,7 @@ progEntry
     |  command
     |  enum
     |  alias
-    |  variableDefinition
+    |  variableDefinition ';'
     |  namespace
     |  import_
     |  fromImport
@@ -23,7 +23,13 @@ import_
     ;
 
 fromImport
-    :   FROM Identifier IMPORT ('*' | Identifier) ';'
+    :   FROM Identifier IMPORT fromImportRhs ';'
+    ;
+
+fromImportRhs
+    : '{' Identifier (',' Identifier)*  '}'
+    | Identifier
+    | WILDCARD
     ;
 
 namespace
@@ -336,6 +342,8 @@ TALK: 'talk';
 TRUE: 'true';
 
 UNLESS: 'unless';
+
+WILDCARD: '*';
 
 WHILE: 'while';
 

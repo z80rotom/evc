@@ -20,10 +20,12 @@ def process_file(ifpath):
     walker.walk(assembler, tree)
 
 def main():
-    for ifpath in glob.glob("scripts/lib/std/*.ev"):
-        print("Processing file: ", ifpath)
-        process_file(ifpath)
-    for ifpath in glob.glob("scripts/src/*.ev"):
+    # print("Start")
+    # Will be pulled in via imports.
+    # for ifpath in glob.glob("scripts/lib/std/*.ev"):
+    #     print("Processing file: ", ifpath)
+    #     process_file(ifpath)
+    for ifpath in glob.glob("scripts/src/*.evc"):
         print("Processing file: ", ifpath)
         process_file(ifpath)
 
