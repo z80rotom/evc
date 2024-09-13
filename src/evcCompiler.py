@@ -1,10 +1,7 @@
 import logging
-import struct
 import sys
 import os
 
-from enum import IntEnum, auto
-from dataclasses import dataclass, field
 
 from antlr4 import *
 from UnityPy.streams import EndianBinaryWriter
@@ -20,113 +17,17 @@ from ev_work import EvWork
 # from ev_flag import EvFlag
 # from ev_sys_flag import EvSysFlag
 
-
-MAX_WORK = 500
-MAX_FLAG = 4000
-MAX_SYS_FLAG = 1000
-RETURN_STORAGE = -1
-
-class ECommandArgType(IntEnum):
-    Flag = auto()
-    SysFlag = auto()
-    Integer = auto()
-    Float = auto()
-    Boolean = auto()
-    String = auto()
-    NumberEnum = auto()
-
-class EFunctionSpecifier(IntEnum):
-    Common = auto()
-    Entry = auto()
-
-@dataclass
-class CommandDefArgument:
-    eArgType: ECommandArgType
-    argTypeIdentifier: str
-    identifier: str
-    storage: int
-    line: int
-    column: int
-
-@dataclass
-class Command:
-    identifier: str
-    storage: int
-    retArg: CommandDefArgument
-    args: list[CommandDefArgument]
-    line: int
-    column: int
-
-@dataclass
-class Function:
-    specifier: EFunctionSpecifier
-    label: int
-    identifier: str
-    retArg: CommandDefArgument
-    args: list[CommandDefArgument]
-    line: int
-    column: int
-
-@dataclass
-class Variable:
-    eArgType: ECommandArgType
-    argTypeIdentifier: str
-    identifier: str
-    storage: int
-    isConst: bool
-    constValue: int
-    line: int
-    column: int
-
-@dataclass
-class Scope:
-    prefix: str = field(default_factory=lambda: None)
-    commands: dict[str, Command] = field(default_factory=dict)
-    functions: dict[str, Function] = field(default_factory=dict)
-    variables: dict[str, Variable] = field(default_factory=dict)
-    childScopes: list  = field(default_factory=list)
-
-@dataclass
-class EvArg:
-    argType: EvArgType
-    data: int
-
-@dataclass
-class EvCmd:
-    cmdType: EvCmdType
-    args: list[EvArg]
-
-@dataclass
-class Label:
-    nameIdx: int # StrTbl
-    commands: list[EvCmd]
-
-@dataclass
-class VariableDefinition:
-    variable: Variable
-    commands: list[EvCmd]
-
-@dataclass
-class AllocatorData:
-    flags: list = field(default_factory=list)
-    sys_flags: list = field(default_factory=list)
-    works: list = field(default_factory=list)
-
-def encode_float(var):
-    var = float(var)
-    data = int(struct.unpack('<i', struct.pack('<f', var))[0])
-    return data
+from core import *
+from scope_mgr import ScopeManager
 
 class evcCompiler(evcListener):
     def __init__(self, ifpath):
-        self.src_ifpath = ifpath
         self.logger = logging.getLogger(__name__)
-        self.scope = Scope()
-        self.globalScope = self.scope
-        self.prevScope = []
+        self.src_ifpath = ifpath
         self.labels = {}
         self.strTbl = []
         self.writer = EndianBinaryWriter()
+        self.scope_mgr = ScopeManager()
     
     def parseNumberContext(self, ctx:evcParser.NumberContext):
         if ctx is None:
@@ -137,6 +38,11 @@ class evcCompiler(evcListener):
         if ctx is None:
             return None
         return int(ctx.NUMBER().getText())
+    
+    def parseStringContext(self, ctx:evcParser.String_Context):
+        strValue = ctx.STRING().getText()
+        print(strValue)
+        return self.addStringToTable(strValue)
 
     def parseType(self, argType:evcParser.TypeContext):
         argTypes = {
@@ -217,14 +123,14 @@ class evcCompiler(evcListener):
         if ctx.type_() is not None:
             retArg = self.parseRetFuncArg(ctx.type_())
 
-        self.scope.commands[identifier] = Command(
+        self.scope_mgr.addCommand(identifier, Command(
             identifier,
             storage,
             retArg,
             args,
             ctx.start.line,
             ctx.start.column
-        )
+        ))
 
     def addStringToTable(self, string):
         if string not in self.strTbl:
@@ -238,28 +144,13 @@ class evcCompiler(evcListener):
         self.labels[idx] = label
         return label
 
-    def newScope(self):
-        newScope = Scope()
-        self.scope.childScopes.append(newScope)
-        self.prevScope.append(self.scope)
-        self.scope = newScope
-
-    def popScope(self):
-        if len(self.prevScope) <= 0:
-            self.logger.warn("Attempting to popscope without prevScope")
-            return
-        if self.scope is self.globalScope:
-            self.logger.warn("Attempting to popScope when at globalScope")
-            return
-        self.scope = self.prevScope.pop()
-
     def parseBlock(self, ctx:evcParser.BlockContext, allocator):
-        self.newScope()
+        self.scope_mgr.push()
         for blockEntry in ctx.blockEntry():
             if blockEntry.variableDefinition() is not None:
                 variableDefinition = self.parseVariableDefinition(blockEntry.variableDefinition(), allocator, True)
-                self.scope.variables[variableDefinition.variable.identifier] = variableDefinition.variable
-        self.popScope()
+                self.scope_mgr.addVariable(variableDefinition.variable.identifier, variableDefinition.variable)
+        self.scope_mgr.pop()
 
     def parseConstVariableRightHandAssignment(self, ctx:evcParser.VariableRightHandAssignmentContext, eArgType):
         constValue = None
@@ -357,12 +248,112 @@ class evcCompiler(evcListener):
             self.logger.error("String variables aren't currently supported: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
             sys.exit()
         elif ctx.functionCall() is not None:
-            self.logger.error("TODO: Cannot retrieve value from function call")
+            functionCall = self.parseFunctionCall(ctx.functionCall())
+            # TODO: Translate into commands
+            print(functionCall)
+            if type(functionCall.function) == Function:
+                self.logger.error("Function calls returning a value aren't currently supported: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
+            else:
+                commands.extend(self.compileCommandCall(ctx, functionCall, storage, eArgType))
             sys.exit()
         else:
             self.logger.error("Unknown variable declaration at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
             sys.exit()
         return commands
+    
+    def compileCommandCall(self, ctx, cmdCall: FunctionCall, eArgTypeRet: ECommandArgType, retStorage: int):
+        commands = []
+        if eArgTypeRet != cmdCall.function.retArg.eArgType:
+            # Note: Looks like passed in eArgTypeRet is probably not accurate here.
+            self.logger.error("Invalid return type of command ({} != {}) for variable at: {}:{}:{}".format(eArgTypeRet, cmdCall.function.retArg.eArgType, self.src_ifpath, ctx.start.line, ctx.start.column))
+            sys.exit()
+        
+        args = []
+        foundReturn = False
+        for arg in cmdCall.args:
+            if arg.isConst:
+                if arg.constValueType in (ECommandArgType.Integer, ECommandArgType.Float):
+                    args.append(EvArg(EvArgType.Value, arg.constValue))
+                elif arg.constValueType == ECommandArgType.String:
+                    args.append(EvArg(EvArgType.String, arg.constValue))
+                elif arg.constValueType == ECommandArgType.Boolean:
+                    self.logger.error("Not possible to pass const bool to command at: {}:{}:{}. Must use flag/sysflag for storage.".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                    sys.exit()
+                else:
+                    self.logger.error("I missed something it seems at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                    sys.exit()
+            else:
+                if arg.variable.eArgType in (ECommandArgType.Integer, ECommandArgType.Float):
+                    args.append(EvArg(EvArgType.Work, arg.variable.storage))
+                elif arg.variable.eArgType == ECommandArgType.Flag:
+                    args.append(EvArg(EvArgType.Flag, arg.variable.storage))
+                elif arg.variable.eArgType == ECommandArgType.SysFlag:
+                    args.append(EvArg(EvArgType.SysFlag, arg.variable.storage))
+                else:
+                    self.logger.error("I missed something it seems at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                    sys.exit()
+        if not foundReturn:
+            args = [EvArg(EvArgType.Work, retStorage)] + args
+
+        commands.append(
+            EvCmd(cmdCall.Command.storage, [
+                args 
+            ])
+        )
+
+        return commands
+
+    def mapFuncCallArg(self, ctx:evcParser.FuncCallArgContext):
+        if ctx.Identifier() is not None:
+            identifier = ctx.Identifier().getText()
+            variable = self.scope_mgr.resolveVariable(identifier)
+            if variable is None:
+                self.logger.error("Unable to resolve variable name at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
+            # Translate const variable into the actual value
+            if variable.isConst:
+                return FunctionCallArg(None, True, variable.constValue, variable.eArgType)
+            return FunctionCallArg(variable, False, None, None)
+        if ctx.string_() is not None:
+            strValue = self.parseStringContext(ctx.string_())
+            if strValue is None:
+                self.logger.error("Unable to parse string at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
+            return FunctionCallArg(None, True, strValue, ECommandArgType.String)
+        
+        if ctx.number() is not None:
+            number = self.parseNumberContext(ctx.number())
+            if number is None:
+                self.logger.error("Unable to parse number at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
+            return FunctionCallArg(None, True, number, ECommandArgType.Float)
+
+    def parseFuncCallArgList(self, ctx:evcParser.FuncCallArgListContext):
+        return map(self.mapFuncCallArg, ctx.funcCallArg())
+
+    def parseFunctionCall(self, ctx:evcParser.FunctionCallContext):
+        identifier = None
+        if ctx.Identifier() is not None:
+            identifier = ctx.Identifier()
+        if ctx.ScopedIdentifier() is not None:
+            identifier = ctx.ScopedIdentifier()
+        if identifier is None:
+            self.logger.error("Unable to parse function/command name at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+            sys.exit()
+        identifier = identifier.getText()
+        args = self.parseFuncCallArgList(ctx.funcCallArgList())
+
+        command = self.scope_mgr.resolveCommand(identifier)
+        if command is not None:
+            return FunctionCall(command, args)
+        else:
+            function = self.scope_mgr.resolveFunction(identifier)
+            if function is None:
+                self.logger.error("Unable to resolve function/command name at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
+            return FunctionCall(function, args)
+
 
     def parseVariableDefinition(self, ctx:evcParser.VariableDefinitionContext, allocator, canAssignMut):
         eArgType = self.parseType(ctx.type_())
@@ -448,7 +439,7 @@ class evcCompiler(evcListener):
 
         label = self.generateLabel(labelName)
         
-        self.scope.functions[identifier] = Function(
+        self.scope_mgr.addFunction(identifier, Function(
             specifier,
             label.nameIdx,
             identifier,
@@ -456,7 +447,7 @@ class evcCompiler(evcListener):
             args,
             ctx.start.line,
             ctx.start.column
-        )
+        ))
 
         # Only integers should be scoped to function.
         allocatorData = AllocatorData()
@@ -500,38 +491,22 @@ class evcCompiler(evcListener):
             sys.exit()
 
         if ctx.fromImportRhs().WILDCARD() is not None:
-            self.scope.functions.update(assembler.globalScope.functions)
-            self.scope.commands.update(assembler.globalScope.commands)
-            self.scope.variables.update(assembler.globalScope.variables)
-            self.scope.childScopes.extend(assembler.globalScope.childScopes)
+            self.scope_mgr.wildCardImport(assembler.scope_mgr)
         else:
-            # How to bring in namespaced variables specifically?
-            for identifierTkn in ctx.fromImportRhs().Identifier():
-                identifier = identifierTkn.getText()
-                foundIdentifier = False
-                if identifier in assembler.globalScope.functions:
-                    self.scope.functions[identifier] = assembler.globalScope.functions[identifier]
-                    foundIdentifier = True
-                if identifier in assembler.globalScope.commands:
-                    self.scope.commands[identifier] = assembler.globalScope.commands[identifier]
-                    foundIdentifier = True
-                if identifier in assembler.globalScope.variables:
-                    self.scope.variables[identifier] = assembler.globalScope.variables[identifier]
-                    foundIdentifier = True
-                if not foundIdentifier:
-                    self.logger.error("Unable to retrieve identifier {} at: {}:{}:{}".format(identifier, self.src_ifpath, ctx.start.line, ctx.start.column))
-                    sys.exit()
-            
+            identifiers = [identifierTkn.getText() in ctx.fromImportRhs().Identifier()]
+            foundIdentifiers = self.scope_mgr.fromImport(assembler.scope_mgr, identifiers)
+            if not foundIdentifiers:
+                self.logger.error("Unable to retrieve identifier {} at: {}:{}:{}".format(identifier, self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
     
     def enterImport_(self, ctx:evcParser.Import_Context):
         assembler = self.handleImport(ctx, ctx.Identifier().getText())
-        assembler.globalScope.prefix = ctx.Identifier().getText()
-        # print(len(assembler.globalScope.variables))
-        self.scope.childScopes.append(assembler.globalScope)
+        assembler.scope_mgr.getGlobalScope().prefix = ctx.Identifier().getText()
+        self.scope_mgr.addChildGlobal(assembler.scope_mgr.getGlobalScope())
 
     def enterProgEntry(self, ctx:evcParser.ProgEntryContext):
         if ctx.variableDefinition() is not None:
             # print("Processing variable definition")
             allocator = lambda ctx, eArgType: self.logger.error("Unable to allocate work at this scope at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
             variableDefinition = self.parseVariableDefinition(ctx.variableDefinition(), allocator, True)
-            self.scope.variables[variableDefinition.variable.identifier] = variableDefinition.variable
+            self.scope_mgr.addVariable(variableDefinition.variable.identifier, variableDefinition.variable)

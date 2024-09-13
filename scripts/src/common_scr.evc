@@ -27,8 +27,7 @@ common function ev_heal_p01() {
             return; // Should generate a _TALK_OBJ_END before _END because inside of a talk block
         }
         if (std::getTrcardRank() >= TRCARD_RANK_GOLD) {
-            if (FE_PC_GOLD)
-            {
+            if (FE_PC_GOLD) {
                 std::playerName(0);
                 std::talkMsg('dp_scenario3%91-msg_common_pc_heal_07');
                 // Duplicate blocks.
@@ -85,8 +84,7 @@ common function ev_heal_p01() {
                 // std::ac::release('HERO')
             }
             player_idle_return('HERO');  // std::obj::anime('HERO', 'player_idle_return')
-            if (std::get_trcard_rank() >= TRCARD_RANK_GOLD)
-            {
+            if (std::get_trcard_rank() >= TRCARD_RANK_GOLD) {
                 std::talkMsg('dp_scenario3%91-msg_common_pc_heal_08');
             } else {
                 std::talkMsg('dp_scenario3%91-msg_common_pc_heal_02');
@@ -94,8 +92,7 @@ common function ev_heal_p01() {
             std::me::play('M_FI002');
             common_pc_kaihuku_common();
             unless (FE_PC_POKERUS) { // Might be better to use the unless keyword to better match the flagoff check
-                if (std::chk_temoti_pokerus() == 1)
-                {
+                if (std::chk_temoti_pokerus() == 1) {
                     FE_PC_POKERUS = true;
                     lock player_banzai_anm00('HERO') {
                         // std::ac::lock('HERO')
@@ -111,8 +108,7 @@ common function ev_heal_p01() {
             }
 
             // ev_pc_kaihuku_after
-            if (goldPCYes == 1)
-            {
+            if (goldPCYes == 1) {
                 // gold_pc_haihuku_02
                 std::talkMsg('dp_scenario3%91-msg_common_pc_heal_09');
                 lock player_banzai_anm00('HERO') {
@@ -216,8 +212,7 @@ common function ev_pocket_me_set(int itemNo) {
 common function ev_item_event(int itemNo, int count) {
     int pocketNo = std::getPocketNo(itemNo);
     std::addItem(itemNo, count);
-    if (pocketNo == 8)
-    {
+    if (pocketNo == 8) {
         // event_item_get_taisetsu
         std::playerName(0);
         std::itemName(1, itemNo, 1);
@@ -236,8 +231,7 @@ common function ev_item_event(int itemNo, int count) {
         // std::me::wait();
         // event_item_get_common_20
         std::me::wait();
-        if (isItemArceusPlate(itemNo) == 1)
-        {
+        if (isItemArceusPlate(itemNo) == 1) {
             // ev_plate_msg_sub
             WK_SCENE_PLATE_MSG += 1;
             switch (WK_SCENE_PLATE_MSG) {
