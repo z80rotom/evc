@@ -125,15 +125,6 @@ class evcListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by evcParser#animationLock.
-    def enterAnimationLock(self, ctx:evcParser.AnimationLockContext):
-        pass
-
-    # Exit a parse tree produced by evcParser#animationLock.
-    def exitAnimationLock(self, ctx:evcParser.AnimationLockContext):
-        pass
-
-
     # Enter a parse tree produced by evcParser#function.
     def enterFunction(self, ctx:evcParser.FunctionContext):
         pass
@@ -224,6 +215,15 @@ class evcListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by evcParser#contextBlock.
+    def enterContextBlock(self, ctx:evcParser.ContextBlockContext):
+        pass
+
+    # Exit a parse tree produced by evcParser#contextBlock.
+    def exitContextBlock(self, ctx:evcParser.ContextBlockContext):
+        pass
+
+
     # Enter a parse tree produced by evcParser#switchBlock.
     def enterSwitchBlock(self, ctx:evcParser.SwitchBlockContext):
         pass
@@ -257,15 +257,6 @@ class evcListener(ParseTreeListener):
 
     # Exit a parse tree produced by evcParser#return.
     def exitReturn(self, ctx:evcParser.ReturnContext):
-        pass
-
-
-    # Enter a parse tree produced by evcParser#talkBlock.
-    def enterTalkBlock(self, ctx:evcParser.TalkBlockContext):
-        pass
-
-    # Exit a parse tree produced by evcParser#talkBlock.
-    def exitTalkBlock(self, ctx:evcParser.TalkBlockContext):
         pass
 
 

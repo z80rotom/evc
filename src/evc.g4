@@ -68,13 +68,8 @@ animation
 animationBlock
     :   (functionCall ';')+
     ;
-
-// Defines a block where a placedata should be locked while an animation is going on
-animationLock
-    :   LOCK Identifier '(' string_ ')' '{' block '}'
-    ;
-
 // End animation
+
 
 // Functions
 function
@@ -130,13 +125,16 @@ blockEntry
     | switchBlock
     | whileBlock
     | forBlock
-    | animationLock
-    | talkBlock
+    | contextBlock
     | variableAssignment ';'
     | variableDefinition ';'
     | functionCall ';'
     | return ';'
     | break ';'
+    ;
+
+contextBlock
+    : WITH Identifier '(' funcCallArgList ')' '{' block '}'
     ;
 
 switchBlock
@@ -156,10 +154,6 @@ return
     :   RETURN  (Identifier | number)?
     ;
 
-talkBlock
-    : TALK '{' block '}'
-    ;
-
 forBlock
     : FOR '(' variableDefinition ';' ifExpr ';'  ')' '{' block '}'
     ;
@@ -168,12 +162,13 @@ whileBlock
     : WHILE '(' ifExpr ')' '{' block '}'
     ;
 
+// TODO: These need to support tuple assignments
 variableDefinition
     :   CONST? type Identifier (':' number)? ('=' variableRightHandAssignment)?
     ;
 
 variableAssignment
-    :   Identifier assignmentOperator variableRightHandAssignment
+    :   (ScopedIdentifier | Identifier) assignmentOperator variableRightHandAssignment
     ;
 
 variableRightHandAssignment
@@ -202,6 +197,7 @@ elseBlock
 ifExpr
     : comparatorLeft Comparator comparatorRight
     | Identifier
+    | ScopedIdentifier
     | functionCall
     ;
 
@@ -344,6 +340,8 @@ TRUE: 'true';
 UNLESS: 'unless';
 
 WILDCARD: '*';
+
+WITH: 'with';
 
 WHILE: 'while';
 

@@ -1,5 +1,22 @@
 import std;
 
+animation player_banzai_anm00 {
+    std::ac::index_anime(9);
+    std::ac::wait(35);
+    // std::ac::end() added at the end by default.
+}
+
+animation player_idle_return {
+    std::ac::index_anime(0);
+    std::ac::wait(10);
+}
+
+function ev_block_doc_end() {
+    std::SYS_FLAG_AUTOSAVE_STOP = false;
+    std::SYS_INPUT_OFF = false;
+    return;
+}
+
 common function ev_heal_p01() {
     const int SP_PM_VERSION = 49;
     const int TRCARD_RANK_GOLD = 4;
@@ -10,7 +27,7 @@ common function ev_heal_p01() {
     int goldPCYes = 0; // allocates
     int winChoice; // Probably best to use the SCWK_ANSWER as storage here to be identical but that's fine.
     // There is also a talk_start...
-    talk { // std::talk_obj_start()
+    with talk_obj() { // std::talk_obj_start()
         // std::temotiBallLoad();
         std::temotiBallLoad();
         // Need to allow for you to specify an argument to use as a return value for a command
@@ -77,7 +94,7 @@ common function ev_heal_p01() {
             winChoice = std::win_choice();
         }
         if (winChoice == YES) {
-            lock player_banzai_anm00('HERO') {
+            with anim_lock(player_banzai_anm00, 'HERO') {
                 // std::ac::lock('HERO')
                 // std::obj::anime('HERO', 'player_banzai_anm00')
                 std::obj::anime_wait();
@@ -94,7 +111,7 @@ common function ev_heal_p01() {
             unless (FE_PC_POKERUS) { // Might be better to use the unless keyword to better match the flagoff check
                 if (std::chk_temoti_pokerus() == 1) {
                     FE_PC_POKERUS = true;
-                    lock player_banzai_anm00('HERO') {
+                    with anim_lock(player_banzai_anm00, 'HERO') {
                         // std::ac::lock('HERO')
                         // std::obj::anime('HERO', 'player_banzai_anm00')
                         std::obj::anime_wait();
@@ -111,7 +128,7 @@ common function ev_heal_p01() {
             if (goldPCYes == 1) {
                 // gold_pc_haihuku_02
                 std::talkMsg('dp_scenario3%91-msg_common_pc_heal_09');
-                lock player_banzai_anm00('HERO') {
+                with anim_lock(player_banzai_anm00, 'HERO') {
                     // std::ac::lock('HERO')
                     // std::obj::anime('HERO', 'player_banzai_anm00')
                     std::obj::animeWait();
@@ -123,7 +140,7 @@ common function ev_heal_p01() {
                 return;
             }
             std::talkMsg('dp_scenario3%91-msg_common_pc_heal_03');
-            lock player_banzai_anm00('HERO') {
+            with anim_lock(player_banzai_anm00, 'HERO') {
                 // std::ac::lock('HERO')
                 // std::obj::anime('HERO', 'player_banzai_anm00')
                 std::obj::animeWait();
@@ -138,25 +155,16 @@ common function ev_heal_p01() {
         }
     }
     // ev_pc_kaihuku_after continued
-    anm_dj_turn_hero_around('HERO');
-    std::obj::animeWait();
+    // TODO: Implement this in EvcScript
+    // anm_dj_turn_hero_around('HERO');
+    // std::obj::animeWait();
+    
     if (SYS_INPUT_OFF)
     {
         ev_block_doc_end();
     }
-    ev_healthcheck();
+    // ev_healthcheck();
     return;
-}
-
-animation player_banzai_anm00 {
-    std::ac::index_anime(9);
-    std::ac::wait(35);
-    // std::ac::end() added at the end by default.
-}
-
-animation player_idle_return {
-    std::ac::index_anime(0);
-    std::ac::wait(10);
 }
 
 function pocket_me_set(int itemNo) {
@@ -201,7 +209,7 @@ function pocket_me_set(int itemNo) {
 
 // Already expects itemNo as TEMP0
 common function ev_pocket_me_set(int itemNo) {
-    pocket_me_set(itemNo);
+    // pocket_me_set(itemNo);
     return;
 }
 
@@ -220,7 +228,7 @@ common function ev_item_event(int itemNo, int count) {
         std::talkMsg('dp_scenario3%91-msg_event_item_get_04');
         std::me::wait();
         // inlined: event_item_get_common_21();
-        std::pocketName(2, pocketNo);
+        std::bagPocketName(2, pocketNo);
         std::talkMsg('dp_scenario3%91-msg_event_item_get_07');
     } else {
         // event_item_get_sonota
@@ -231,7 +239,7 @@ common function ev_item_event(int itemNo, int count) {
         // std::me::wait();
         // event_item_get_common_20
         std::me::wait();
-        if (isItemArceusPlate(itemNo) == 1) {
+        if (std::isItemArceusPlate(itemNo) == 1) {
             // ev_plate_msg_sub
             WK_SCENE_PLATE_MSG += 1;
             switch (WK_SCENE_PLATE_MSG) {
@@ -268,9 +276,31 @@ common function ev_item_event(int itemNo, int count) {
         // All branches of switch statement collapse into this
         std::playerName(0);
         std::itemName(1, itemNo, count);
-        std::pocketName(2, pocketNo);
+        std::bagPocketName(2, pocketNo);
         std::talkMsg('dp_scenario3%93-msg_fld_item_get_10');
     }
 
     return;
 }
+
+/*
+function ev_poison_dead()
+{
+    with event() { // _EVENT_START
+        int pokeCount = std::getPokeCount();
+        for (int i = 1; i < pokeCount; i++)
+        {
+            if (std::approve_poison_dead(i) != 0)
+            {
+                std::nickName(0, i);
+                std::talkMsg('dp_scenario1%40-msg_c01r0206_stop_01');
+            }
+        }
+        if (std::getPokeCount3(6) == 0) {
+            // ev_poison_game_over
+            std::playerName(0);
+            std::talkMsg();
+        }
+    } // _TALK_CLOSE // _EVENT_END
+}
+*/

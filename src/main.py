@@ -1,11 +1,13 @@
 
 import glob
+import os
 
 # Antlr4
 from antlr4 import *
 from evcCompiler import evcCompiler
 from evcLexer import evcLexer
 from evcParser import evcParser
+from evWriter import EvWriter
 
 # Allocate a couple of flags to use as bool registers.
 def process_file(ifpath):
@@ -18,6 +20,15 @@ def process_file(ifpath):
     assembler = evcCompiler(ifpath)
     walker = ParseTreeWalker()
     walker.walk(assembler, tree)
+    # print(assembler.labels)
+    # print(assembler.strTbl)
+
+    dirPath, ext = os.path.splitext(ifpath)
+    leaf = os.path.basename(dirPath)
+    ofpath = os.path.join("output", "{}.ev".format(leaf))
+    evWriter = EvWriter()
+    evWriter.write(assembler.labels, assembler.strTbl, ofpath)
+
 
 def main():
     # print("Start")

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from ev_argtype import EvArgType
 from ev_cmd import EvCmdType
 from ev_work import EvWork
+from ev_sys_flag import EvSysFlag
 
 MAX_WORK = 500
 MAX_FLAG = 4000
@@ -54,6 +55,13 @@ class Function:
     column: int
 
 @dataclass
+class Animation:
+    label: int
+    identifier: str
+    line: int
+    column: int
+
+@dataclass
 class Variable:
     eArgType: ECommandArgType
     argTypeIdentifier: str
@@ -76,8 +84,9 @@ class EvCmd:
 
 @dataclass
 class Label:
-    nameIdx: int # StrTbl
-    commands: list[EvCmd]
+    nameIdx: int # StrTbl 
+    childLabels: list = field(default_factory=list)
+    commands: list[EvCmd] = field(default_factory=list)
 
 @dataclass
 class VariableDefinition:
@@ -102,8 +111,20 @@ class FunctionCall:
     function: object
     args: list[FunctionCallArg]
 
+@dataclass
+class ComparatorLeft:
+    storage: int
+    eArgType: ECommandArgType
+    commands: list[EvCmd]
+
 
 def encode_float(var):
     var = float(var)
     data = int(struct.unpack('<i', struct.pack('<f', var))[0])
+    return data
+
+def decode_int(var):
+    # Thanks Aldo796
+    var = int(var)
+    data = float(struct.unpack('!f', struct.pack('!I', var & 0xFFFFFFFF))[0])
     return data
