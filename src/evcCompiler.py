@@ -265,9 +265,31 @@ class evcCompiler(evcListener):
             comparatorLeft = self.parseComparatorLeft(ctx.comparatorLeft())
             commands.extend(comparatorLeft.commands)
             commands.extend(self.compileComparison(comparatorLeft, ctx.Comparator(), ctx.comparatorRight(), label))
-        else:
+        elif ctx.functionCall() is not None:
             # Just a variable identifier. Flag on/off checks or checking if a work value != 0
             pass
+        else:
+            identifier = self.getIdentifier(ctx)
+            variable = self.scope_mgr.resolveVariable(identifier)
+            if variable is None:
+                self.logger.error("Unable to resolve variable name {} at: {}:{}:{}".format(identifier, self.src_ifpath, ctx.start.line, ctx.start.column))
+                sys.exit()
+            if variable.eArgType == ECommandArgType.Flag:
+                commands.append(EvCmd(
+                    EvCmdType._IF_FLAGON_JUMP,
+                    [
+                        EvArg(EvArgType.Flag, variable.storage),
+                        EvArg(EvArgType.String, label.nameIdx)
+                    ]
+                ))
+            elif variable.eArgType == ECommandArgType.SysFlag:
+                commands.append(EvCmd(
+                    EvCmdType._IF_FLAGON_JUMP,
+                    [
+                        EvArg(EvArgType.SysFlag, variable.storage),
+                        EvArg(EvArgType.String, label.nameIdx)
+                    ]
+                ))
             
         return commands
     
