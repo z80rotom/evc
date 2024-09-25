@@ -150,12 +150,29 @@ class evcCompiler(evcListener):
         self.labels[idx] = label
         return label
 
+    def addJump(self, src: Label, dst: Label):
+        src.commands.append(
+            EvCmd(EvCmdType._JUMP.value, [
+                EvArg(EvArgType.String, dst.nameIdx)
+            ])
+        )
+
     def parseSwitchStatement(self, ctx:evcParser.SwitchBlockContext, allocator, label):
         # TODO: Look into the specifics of the _CASE_CANCEL command
         commands = []
         ifExpr = ctx.ifExpr()
         if ifExpr.functionCall() is not None:
-            pass
+            functionCall = self.parseFunctionCall(ifExpr.functionCall())
+            if type(functionCall.function) == Function:
+                # TODO: Function calls not just commands
+                self.logger.warn("Function calls aren't currently supported: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
+            else:
+                # TODO: Add support for binding result to variable while doing comparison
+                # TODO: Validate that the command returns a value
+                storage = EvWork.SCWK_ANSWER.value
+                eArgType = functionCall.function.retArg.eArgType
+                label.commands.extend(self.compileCommandCall(ctx, functionCall, None, None))
+                label.commands.append(EvCmd(EvCmdType._SWITCH.value, [EvArg(EvArgType.Work, storage)]))
         else:
             identifier = self.getIdentifier(ifExpr)
             variable = self.scope_mgr.resolveVariable(identifier)
@@ -172,11 +189,7 @@ class evcCompiler(evcListener):
                 tmpLabel = self.parseBlock(
                     caseBlock.block(), allocator, label
                 )
-                tmpLabel.commands.append(
-                    EvCmd(EvCmdType._JUMP.value, [
-                        EvArg(EvArgType.String, afterLabel.nameIdx)
-                    ])
-                )
+                self.addJump(tmpLabel, afterLabel)
                 continue
 
             number = self.parseNumberContextInt(caseBlock.number())
@@ -204,11 +217,7 @@ class evcCompiler(evcListener):
                 tmpLabel = self.parseBlock(
                     caseBlock.block(), allocator, caseLabel
                 )
-                tmpLabel.commands.append(
-                    EvCmd(EvCmdType._JUMP.value, [
-                        EvArg(EvArgType.String, afterLabel.nameIdx)
-                    ])
-                )
+                self.addJump(tmpLabel, afterLabel)
         return afterLabel
 
     def parseBlock(self, ctx:evcParser.BlockContext, allocator, label, newScope=None):
@@ -367,12 +376,9 @@ class evcCompiler(evcListener):
         label.commands.extend(commands)
 
         if ctx.block() is not None:
+            # TODO: Maybe add a parseBlockAndJump function?
             tmpLabel = self.parseBlock(ctx.block(), allocator, ifBlockLabel)
-            tmpLabel.commands.append(
-                EvCmd(EvCmdType._JUMP.value, [
-                    EvArg(EvArgType.String, afterLabel.nameIdx)
-                ])
-            )
+            self.addJump(tmpLabel, afterLabel)
 
         for elseIfBlockCtx in ctx.elseIfBlock():
             elseIfBlockLabel = self.allocateChildLabel(label)
@@ -381,19 +387,11 @@ class evcCompiler(evcListener):
 
             if elseIfBlockCtx.block() is not None:
                 tmpLabel = self.parseBlock(elseIfBlockCtx.block(), allocator, elseIfBlockLabel)
-                tmpLabel.commands.append(
-                    EvCmd(EvCmdType._JUMP.value, [
-                        EvArg(EvArgType.String, afterLabel.nameIdx)
-                    ])
-                )
+                self.addJump(tmpLabel, afterLabel)
         
         if ctx.elseBlock() is not None:
             tmpLabel = self.parseBlock(ctx.elseBlock().block(), allocator, label)
-            tmpLabel.commands.append(
-                EvCmd(EvCmdType._JUMP.value, [
-                    EvArg(EvArgType.String, afterLabel.nameIdx)
-                ])
-            )
+            self.addJump(tmpLabel, afterLabel)
 
         # Only the else block will use the original label
         # Need to return the after label for the block to start using as it's main label now
@@ -507,6 +505,7 @@ class evcCompiler(evcListener):
         return commands
     
     def compileCommandCall(self, ctx, cmdCall: FunctionCall, eArgTypeRet: ECommandArgType, retStorage=None):
+        forceReturn = retStorage is not None
         if retStorage is None:
             retStorage = EvWork.SCWK_ANSWER.value
         commands = []
@@ -540,13 +539,15 @@ class evcCompiler(evcListener):
                 else:
                     self.logger.error("I missed something it seems at: {}:{}:{}".format(self.src_ifpath, ctx.start.line, ctx.start.column))
                     sys.exit()
-        retIdx = 0
-        for i, cmdDef in enumerate(cmdCall.function.args):
-            if cmdDef.storage == RETURN_STORAGE:
-                self.logger.info("Using custom return storage")
-                retIdx = i
-                break
-        args.insert(retIdx, EvArg(EvArgType.Work, retStorage))
+        
+        if (cmdCall.function.retArg is not None) or forceReturn:
+            retIdx = 0
+            for i, cmdDef in enumerate(cmdCall.function.args):
+                if cmdDef.storage == RETURN_STORAGE:
+                    self.logger.info("Using custom return storage")
+                    retIdx = i
+                    break
+            args.insert(retIdx, EvArg(EvArgType.Work, retStorage))
 
         commands.append(
             EvCmd(cmdCall.function.storage, args)
