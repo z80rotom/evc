@@ -142,7 +142,7 @@ switchBlock
     ;
 
 caseBlock
-    : CASE (Identifier | number) ':' block
+    : CASE (ScopedIdentifier | Identifier | number) ':' block
     | DEFAULT ':' block
     ;
 

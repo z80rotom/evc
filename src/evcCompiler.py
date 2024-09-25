@@ -150,6 +150,67 @@ class evcCompiler(evcListener):
         self.labels[idx] = label
         return label
 
+    def parseSwitchStatement(self, ctx:evcParser.SwitchBlockContext, allocator, label):
+        # TODO: Look into the specifics of the _CASE_CANCEL command
+        commands = []
+        ifExpr = ctx.ifExpr()
+        if ifExpr.functionCall() is not None:
+            pass
+        else:
+            identifier = self.getIdentifier(ifExpr)
+            variable = self.scope_mgr.resolveVariable(identifier)
+            if variable.eArgType != ECommandArgType.Integer:
+                # TODO: Throw error?
+                pass
+            if variable.isConst:
+                # TODO: Throw error since meaningless statement
+                pass
+            label.commands.append(EvCmd(EvCmdType._SWITCH.value, [EvArg(EvArgType.Work, variable.storage)]))
+        afterLabel = self.allocateChildLabel(label)
+        for caseBlock in ctx.caseBlock():
+            if caseBlock.DEFAULT() is not None:
+                tmpLabel = self.parseBlock(
+                    caseBlock.block(), allocator, label
+                )
+                tmpLabel.commands.append(
+                    EvCmd(EvCmdType._JUMP.value, [
+                        EvArg(EvArgType.String, afterLabel.nameIdx)
+                    ])
+                )
+                continue
+
+            number = self.parseNumberContextInt(caseBlock.number())
+            caseLabel = self.allocateChildLabel(label)
+            if number is not None:
+                number = encode_float(number)
+            else:
+                identifier = self.getIdentifier(caseBlock)
+                variable = self.scope_mgr.resolveVariable(identifier)
+                if variable.eArgType != ECommandArgType.Integer:
+                    # TODO: Throw error?
+                    continue
+                if not variable.isConst:
+                    # TODO: Throw error
+                    continue
+                number = variable.constValue
+            if number is None:
+                # NOTE: Not sure what to do here...
+                continue
+            label.commands.append(EvCmd(EvCmdType._CASE_JUMP.value, [
+                EvArg(EvArgType.Value, number),
+                EvArg(EvArgType.String, caseLabel.nameIdx)
+            ]))
+            if caseBlock.block():
+                tmpLabel = self.parseBlock(
+                    caseBlock.block(), allocator, caseLabel
+                )
+                tmpLabel.commands.append(
+                    EvCmd(EvCmdType._JUMP.value, [
+                        EvArg(EvArgType.String, afterLabel.nameIdx)
+                    ])
+                )
+        return afterLabel
+
     def parseBlock(self, ctx:evcParser.BlockContext, allocator, label, newScope=None):
         self.scope_mgr.push(newScope)
         for blockEntry in ctx.blockEntry():
@@ -162,6 +223,10 @@ class evcCompiler(evcListener):
                 continue
             if blockEntry.variableAssignment() is not None:
                 label.commands.extend(self.parseVariableAssignment(blockEntry.variableAssignment()))
+                continue
+            if blockEntry.switchBlock() is not None:
+                label = self.parseSwitchStatement(blockEntry.switchBlock(), allocator, label)
+                continue
             if blockEntry.functionCall() is not None:
                 functionCall = self.parseFunctionCall(blockEntry.functionCall())
                 if type(functionCall.function) == Function:
@@ -175,6 +240,7 @@ class evcCompiler(evcListener):
                 label = self.parseIfBlock(blockEntry.ifBlock(), allocator, label)
                 continue
         self.scope_mgr.pop()
+        return label
     
     def getIdentifier(self, ctx):
         if hasattr(ctx, "Identifier") and ctx.Identifier() is not None:
@@ -294,13 +360,19 @@ class evcCompiler(evcListener):
         return commands
     
     def parseIfBlock(self, ctx:evcParser.IfBlockContext, allocator, label):
+        afterLabel = self.allocateChildLabel(label)
         ifBlockLabel = self.allocateChildLabel(label)
         # Pass in the ifBlockLabel so it knows what to jump to
         commands = self.parseIfExpr(ctx.ifExpr(), ifBlockLabel)
         label.commands.extend(commands)
 
         if ctx.block() is not None:
-            self.parseBlock(ctx.block(), allocator, ifBlockLabel)
+            tmpLabel = self.parseBlock(ctx.block(), allocator, ifBlockLabel)
+            tmpLabel.commands.append(
+                EvCmd(EvCmdType._JUMP.value, [
+                    EvArg(EvArgType.String, afterLabel.nameIdx)
+                ])
+            )
 
         for elseIfBlockCtx in ctx.elseIfBlock():
             elseIfBlockLabel = self.allocateChildLabel(label)
@@ -308,12 +380,21 @@ class evcCompiler(evcListener):
             label.commands.extend(commands)
 
             if elseIfBlockCtx.block() is not None:
-                self.parseBlock(elseIfBlockCtx.block(), allocator, elseIfBlockLabel)
+                tmpLabel = self.parseBlock(elseIfBlockCtx.block(), allocator, elseIfBlockLabel)
+                tmpLabel.commands.append(
+                    EvCmd(EvCmdType._JUMP.value, [
+                        EvArg(EvArgType.String, afterLabel.nameIdx)
+                    ])
+                )
         
         if ctx.elseBlock() is not None:
-            self.parseBlock(ctx.elseBlock().block(), allocator, label)
+            tmpLabel = self.parseBlock(ctx.elseBlock().block(), allocator, label)
+            tmpLabel.commands.append(
+                EvCmd(EvCmdType._JUMP.value, [
+                    EvArg(EvArgType.String, afterLabel.nameIdx)
+                ])
+            )
 
-        afterLabel = self.allocateChildLabel(label)
         # Only the else block will use the original label
         # Need to return the after label for the block to start using as it's main label now
         return afterLabel
